@@ -4,11 +4,13 @@ use std::path::PathBuf;
 
 pub fn show(path: &PathBuf) -> Result<(), Box<dyn Error>> {
     let Ok(data) = fs::read_to_string(path) else {
-        return Err(format!("Could not read {:?}", path).into());
+        return Err(format!("Could not read {}", path.display()).into());
     };
     println!("Parsing presets in {}...", path.display());
 
     let lines = data.lines().filter_map(|s| s.strip_prefix("preset "));
+
+    let mut found = false;
 
     for line in lines {
         let splitted: Vec<&str> = line.trim().split("=").collect();
@@ -30,27 +32,35 @@ pub fn show(path: &PathBuf) -> Result<(), Box<dyn Error>> {
             print!("*.{}, ", extensions[i]);
         }
         println!("*.{}", extensions[n - 1]);
+
+        found = true;
     }
+
+    if !found {
+        println!("Could not find any preset in {}", path.display());
+    }
+
     Ok(())
 }
 
 // Only supported in linux filesystems
 pub fn parse(preset: &String, path: &PathBuf) -> Result<Vec<String>, Box<dyn Error>> {
     let Ok(data) = fs::read_to_string(path) else {
-        return Err(format!("Could not read {:?}", path).into());
+        return Err(format!("Could not read {}", path.display()).into());
     };
 
     let prefix = format!("preset {preset}");
     let Some(line) = data.lines().find(|s| s.starts_with(&prefix)) else {
-        return Err(format!("Could not find preset \"{}\" in {:?}", preset, path).into());
+        return Err(format!("Could not find preset \"{}\" in {}", preset, path.display()).into());
     };
 
     let splitted: Vec<&str> = line.split("=").collect();
 
     if splitted.len() != 2 {
         return Err(format!(
-            "Preset \"{}\" not formatted correctly in {:?}",
-            preset, path
+            "Preset \"{}\" not formatted correctly in {}",
+            preset,
+            path.display()
         )
         .into());
     }
@@ -64,7 +74,12 @@ pub fn parse(preset: &String, path: &PathBuf) -> Result<Vec<String>, Box<dyn Err
         .collect();
 
     if extensions.is_empty() {
-        return Err(format!("Preset \"{}\" with no extensions in {:?}", preset, path).into());
+        return Err(format!(
+            "Preset \"{}\" with no extensions in {}",
+            preset,
+            path.display()
+        )
+        .into());
     }
 
     Ok(extensions)
