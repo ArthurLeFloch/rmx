@@ -1,0 +1,6 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+License: GPL-3.0
+
+Copyright: 2025 Arthur Le Floch <alf.github@gmail.com>
+Source: https://github.com/ArthurLeFloch/rmx
+Files: *

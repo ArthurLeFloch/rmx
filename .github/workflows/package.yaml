@@ -1,0 +1,77 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '*'
+
+jobs:
+  test:
+    name: Test on ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cargo test
+        run: cargo test
+
+  package:
+    name: Package .deb for ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [test]
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: |
+          cargo install cargo-deb
+
+          mkdir -p debian/ build/
+          cargo run --bin man --features mangen > build/man
+
+          cp debian/rmx.conf build/
+          gzip -n --best -c README.md > build/README.gz
+          gzip -n --best -c build/man > build/rmx.1.gz
+          gzip -n --best -c debian/changelog > build/changelog.gz
+
+          cargo-deb -o build/
+
+      - name: Package check
+        run: |
+          sudo apt install lintian
+          lintian build/rmx_*.deb
+
+      - name: Generate checksums
+        run: |
+          cd build/
+          DEB_FILE=$(ls *.deb)
+          DEB_FILE_NAME=$(basename "$DEB_FILE" .deb)  
+          sha256sum "$DEB_FILE" > "$DEB_FILE_NAME.sha256"
+
+      - name: Upload packages to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          overwrite: true
+          file: build/*.{deb,sha256}
+          file_glob: true
