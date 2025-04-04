@@ -4,7 +4,8 @@ Command line tool to delete files based on their extension.
 
 ## Usage
 
-> [!NOTE] > `rmx` does not delete directories, nor socket or fifos or other special files. It will only deletes regular files.
+> [!NOTE]
+> `rmx` does not delete directories, nor socket or fifos or other special files. It will only deletes regular files.
 
 ### Basic arguments
 
