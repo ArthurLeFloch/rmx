@@ -19,7 +19,7 @@ assets = [
 	{ source = "target/release/rmx", dest = "usr/bin/", mode = "755" },
 	{ source = "build/README.gz", dest = "usr/share/doc/rmx/README.gz", mode = "644" },
 	{ source = "build/rmx.1.gz", dest = "usr/share/man/man1/rmx.1.gz", mode = "644" },
-	{ source = "build/rmx.conf", dest = "etc/rmx/rmx.conf", mode = "644" },
+	{ source = "rmx.conf", dest = "etc/rmx/rmx.conf", mode = "644" },
 ]
 
 [dependencies]

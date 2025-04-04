@@ -48,7 +48,7 @@ jobs:
           mkdir -p debian/ build/
           cargo run --bin man --features mangen > build/man
 
-          cp debian/rmx.conf build/
+          cp rmx.conf build/
           gzip -n --best -c README.md > build/README.gz
           gzip -n --best -c build/man > build/rmx.1.gz
           gzip -n --best -c debian/changelog > build/changelog.gz
