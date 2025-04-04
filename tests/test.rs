@@ -94,6 +94,17 @@ fn it_no_path_should_fail() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn it_current_dir() -> Result<(), Box<dyn Error>> {
+    Command::cargo_bin("rmx")?
+        .arg("-n")
+        .arg("unknown")
+        .assert()
+        .success();
+
+    Ok(())
+}
+
+#[test]
 fn it_malformed_extension_should_fail() -> Result<(), Box<dyn Error>> {
     let temp_dir = create_temp_folder();
     let path_buf = temp_dir.path().to_path_buf();
@@ -508,7 +519,7 @@ fn it_using_preset_should_not_allow_other_extensions() -> Result<(), Box<dyn Err
     let temp_dir = create_temp_folder();
     let path_buf = temp_dir.path().to_path_buf();
 
-    let presets = "preset some=*\npreset other=txt log";
+    let presets = "preset some=a\npreset other=txt log";
     let file = create_config_file(presets)?;
 
     let config_path = file.path().to_path_buf();
@@ -525,6 +536,36 @@ fn it_using_preset_should_not_allow_other_extensions() -> Result<(), Box<dyn Err
         .assert()
         .failure()
         .stderr(predicate::str::contains("cannot be used with"));
+
+    Ok(())
+}
+
+#[test]
+fn it_using_presets() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let presets = "preset some=aux\npreset other=txt log";
+    let file = create_config_file(presets)?;
+
+    let config_path = file.path().to_path_buf();
+
+    let control_file = path_buf.clone().join("root.log");
+    assert!(control_file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("--presets")
+        .arg("--config")
+        .arg(config_path)
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("txt")
+                .and(predicate::str::contains("log"))
+                .and(predicate::str::contains("aux")),
+        );
+
+    assert!(control_file.exists());
 
     Ok(())
 }
