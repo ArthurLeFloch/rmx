@@ -1,3 +1,12 @@
+rmx (0.1.1) unstable; urgency=low
+
+  * Empty presets are now not considered as valid presets.
+  * Add message when no preset is found.
+  * Slightly changed some error messages.
+  * Better code coverage.
+
+ -- Arthur Le Floch <alf.github@gmail.com>  Fri, 04 Apr 2025 15:10:22 +0100
+
 rmx (0.1.0) unstable; urgency=low
 
   * Initial release.
