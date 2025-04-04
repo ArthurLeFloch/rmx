@@ -121,12 +121,20 @@ impl Args {
         })
     }
 
-    pub fn get_extensions(&self) -> Result<Vec<String>, Box<dyn Error>> {
+    fn raw_get_extensions(&self) -> Result<Vec<String>, Box<dyn Error>> {
         if let Some(p) = &self.preset {
             return preset::parse(p, &self.config);
         }
 
         Ok(self.extensions.clone())
+    }
+
+    pub fn get_extensions(&self) -> Result<Vec<String>, Box<dyn Error>> {
+        let extensions = self.raw_get_extensions()?;
+        if !are_extensions_valid(&extensions) {
+            return Err("Invalid extensions.".into());
+        }
+        Ok(extensions)
     }
 
     pub fn get_options(&self) -> (CollectOptions, DeleteOptions) {
@@ -142,5 +150,51 @@ impl Args {
                 dry_run: self.dry_run,
             },
         )
+    }
+}
+
+fn are_extensions_valid(extensions: &Vec<String>) -> bool {
+    extensions
+        .iter()
+        .all(|ext| ext.bytes().all(|b| (b'a'..=b'z').contains(&b)))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn check_one_valid_extension() {
+        let mut extensions = Vec::new();
+        extensions.push("a".to_string());
+
+        assert!(are_extensions_valid(&extensions));
+    }
+
+    #[test]
+    fn check_two_valid_extension() {
+        let mut extensions: Vec<String> = Vec::new();
+        extensions.push("a".to_string());
+        extensions.push("b".to_string());
+
+        assert!(are_extensions_valid(&extensions));
+    }
+
+    #[test]
+    fn check_star_extension() {
+        let mut extensions: Vec<String> = Vec::new();
+        extensions.push("a".to_string());
+        extensions.push("*".to_string());
+
+        assert!(!are_extensions_valid(&extensions));
+    }
+
+    #[test]
+    fn check_invalid_extension() {
+        let mut extensions: Vec<String> = Vec::new();
+        extensions.push(".".to_string());
+        extensions.push("b".to_string());
+
+        assert!(!are_extensions_valid(&extensions));
     }
 }

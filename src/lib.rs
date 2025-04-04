@@ -73,6 +73,7 @@ fn collect_matching_files_rec(
     Ok(acc)
 }
 
+// Assume extensions are valid
 pub fn collect_matching_files(
     extensions: &Vec<String>,
     path: &PathBuf,
@@ -184,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn check_collect_without_match() -> Result<(), Box<dyn Error>> {
+    fn collect_without_match() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -204,7 +205,7 @@ mod tests {
     }
 
     #[test]
-    fn check_collect_one_extension() -> Result<(), Box<dyn Error>> {
+    fn collect_one_extension() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -225,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn check_collect_reverse() -> Result<(), Box<dyn Error>> {
+    fn collect_reverse() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -247,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn check_collect_with_hidden_files() -> Result<(), Box<dyn Error>> {
+    fn collect_with_hidden_files() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -269,7 +270,7 @@ mod tests {
     }
 
     #[test]
-    fn check_collect_reverse_with_hidden_files() -> Result<(), Box<dyn Error>> {
+    fn collect_reverse_with_hidden_files() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -292,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn check_collect_multiple_extension() -> Result<(), Box<dyn Error>> {
+    fn collect_multiple_extension() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -313,7 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn check_collect_recursive() -> Result<(), Box<dyn Error>> {
+    fn collect_recursive() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -343,7 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn check_delete_one_file() -> Result<(), Box<dyn Error>> {
+    fn delete_one_file() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -366,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn check_delete_multiple_files() -> Result<(), Box<dyn Error>> {
+    fn delete_multiple_files() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 
@@ -396,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn check_delete_dry_run() -> Result<(), Box<dyn Error>> {
+    fn delete_dry_run() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
 

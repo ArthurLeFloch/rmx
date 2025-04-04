@@ -28,12 +28,12 @@ fn main() {
     };
 
     let extensions = args.get_extensions().unwrap_or_else(|e| {
-        eprintln!("{e}");
+        eprintln!("Error while collecting extensions: {e}");
         process::exit(1);
     });
 
     let path = args.get_path().unwrap_or_else(|e| {
-        eprintln!("{e}");
+        eprintln!("Error while getting path: {e}");
         process::exit(1);
     });
 

@@ -2,7 +2,8 @@ use assert_cmd::Command;
 use predicates::prelude::*;
 use std::error::Error;
 use std::fs::{self, File};
-use tempfile::{self, TempDir};
+use std::io::Write;
+use tempfile::{self, NamedTempFile, TempDir};
 
 // Creates a directory as follow:
 //
@@ -58,6 +59,12 @@ fn create_temp_folder() -> TempDir {
     temp_dir
 }
 
+fn create_config_file(data: &str) -> Result<NamedTempFile, Box<dyn Error>> {
+    let file = NamedTempFile::new()?;
+    write!(&file, "{}", data)?;
+    Ok(file)
+}
+
 #[test]
 fn it_no_extension_should_fail() -> Result<(), Box<dyn Error>> {
     let temp_dir = create_temp_folder();
@@ -82,6 +89,23 @@ fn it_no_path_should_fail() -> Result<(), Box<dyn Error>> {
         .assert()
         .failure()
         .stderr(predicate::str::contains("--path <PATH>"));
+
+    Ok(())
+}
+
+#[test]
+fn it_malformed_extension_should_fail() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    Command::cargo_bin("rmx")?
+        .arg("-n")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("*")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid extensions"));
 
     Ok(())
 }
@@ -345,6 +369,121 @@ fn it_using_help_should_success() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin("rmx")?.arg("-h").assert().success();
 
     assert!(control_file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_using_preset_with_empty_preset_should_err() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let presets = "preset some=\npreset other=txt log";
+    let file = create_config_file(presets)?;
+
+    let config_path = file.path().to_path_buf();
+
+    let control_file = path_buf.clone().join("root.log");
+    assert!(control_file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("--preset")
+        .arg("some")
+        .arg("--config")
+        .arg(config_path)
+        .assert()
+        .failure();
+
+    assert!(control_file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_using_preset_with_one_preset() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let presets = "preset some=dat\npreset other=txt log";
+    let file = create_config_file(presets)?;
+
+    let config_path = file.path().to_path_buf();
+
+    let data_file = path_buf.clone().join("data.dat");
+    let control_file = path_buf
+        .clone()
+        .join("subfolder1")
+        .join("subfolder2")
+        .join("data.dat");
+    assert!(data_file.exists());
+    assert!(control_file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("--preset")
+        .arg("some")
+        .arg("--config")
+        .arg(config_path)
+        .arg("-f")
+        .assert()
+        .success();
+
+    assert!(!data_file.exists());
+    assert!(control_file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_malformed_extension_in_preset_should_fail() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let presets = "preset some=*\npreset other=txt log";
+    let file = create_config_file(presets)?;
+
+    let config_path = file.path().to_path_buf();
+
+    Command::cargo_bin("rmx")?
+        .arg("-n")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("--preset")
+        .arg("some")
+        .arg("--config")
+        .arg(config_path)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid extensions"));
+
+    Ok(())
+}
+
+#[test]
+fn it_using_preset_should_not_allow_other_extensions() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let presets = "preset some=*\npreset other=txt log";
+    let file = create_config_file(presets)?;
+
+    let config_path = file.path().to_path_buf();
+
+    Command::cargo_bin("rmx")?
+        .arg("-n")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("--preset")
+        .arg("some")
+        .arg("--config")
+        .arg(config_path)
+        .arg("class")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
 
     Ok(())
 }
