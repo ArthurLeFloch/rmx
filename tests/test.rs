@@ -438,6 +438,47 @@ fn it_using_preset_with_one_preset() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn it_using_preset_recursive() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let presets = "preset some=dat\npreset other=txt log";
+    let file = create_config_file(presets)?;
+
+    let config_path = file.path().to_path_buf();
+
+    let first_file = path_buf.clone().join("data.dat");
+    let second_file = path_buf
+        .clone()
+        .join("subfolder1")
+        .join("subfolder2")
+        .join("data.dat");
+    let control_file = path_buf.clone().join("root.log");
+
+    assert!(first_file.exists());
+    assert!(second_file.exists());
+    assert!(control_file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-r")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("--preset")
+        .arg("some")
+        .arg("--config")
+        .arg(config_path)
+        .arg("-f")
+        .assert()
+        .success();
+
+    assert!(!first_file.exists());
+    assert!(!second_file.exists());
+    assert!(control_file.exists());
+
+    Ok(())
+}
+
+#[test]
 fn it_malformed_extension_in_preset_should_fail() -> Result<(), Box<dyn Error>> {
     let temp_dir = create_temp_folder();
     let path_buf = temp_dir.path().to_path_buf();
