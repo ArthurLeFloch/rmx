@@ -19,8 +19,8 @@ use tempfile::{self, NamedTempFile, TempDir};
 // │   └── sub1.txt
 // ├── .hidden.txt
 // ├── data.dat
-// ├── file.aA-01.2
-// ├── .hidden.aA-01.2
+// ├── file.aA-01.23
+// ├── .hidden.aA-01.23
 // ├── root.log
 // └── root.txt
 //
@@ -32,8 +32,8 @@ fn create_temp_folder() -> TempDir {
     File::create(temp_dir.path().join("root.txt")).unwrap();
     File::create(temp_dir.path().join("root.log")).unwrap();
     File::create(temp_dir.path().join("data.dat")).unwrap();
-    File::create(temp_dir.path().join("file.aA-01.2")).unwrap();
-    File::create(temp_dir.path().join(".hidden.aA-01.2")).unwrap();
+    File::create(temp_dir.path().join("file.aA-01.23")).unwrap();
+    File::create(temp_dir.path().join(".hidden.aA-01.23")).unwrap();
     File::create(temp_dir.path().join(".hidden.txt")).unwrap();
 
     // Create subfolder1
@@ -378,14 +378,14 @@ fn it_complex_extension_should_success() -> Result<(), Box<dyn Error>> {
     let temp_dir = create_temp_folder();
     let path_buf = temp_dir.path().to_path_buf();
 
-    let file = path_buf.clone().join("file.aA-01.2");
+    let file = path_buf.clone().join("file.aA-01.23");
     assert!(file.exists());
 
     Command::cargo_bin("rmx")?
         .arg("-l")
         .arg("-p")
         .arg(path_buf.to_str().unwrap())
-        .arg("aA-01.2")
+        .arg("aA-01.23")
         .assert()
         .success()
         .stdout(predicate::str::contains("Do you really want to delete 1 "));
@@ -400,7 +400,7 @@ fn it_hidden_complex_extension_should_success() -> Result<(), Box<dyn Error>> {
     let temp_dir = create_temp_folder();
     let path_buf = temp_dir.path().to_path_buf();
 
-    let file = path_buf.clone().join(".hidden.aA-01.2");
+    let file = path_buf.clone().join(".hidden.aA-01.23");
     assert!(file.exists());
 
     Command::cargo_bin("rmx")?
@@ -408,12 +408,105 @@ fn it_hidden_complex_extension_should_success() -> Result<(), Box<dyn Error>> {
         .arg("-a")
         .arg("-p")
         .arg(path_buf.to_str().unwrap())
-        .arg("aA-01.2")
+        .arg("aA-01.23")
         .assert()
         .success()
         .stdout(predicate::str::contains("Do you really want to delete 2 "));
 
     assert!(!file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_multi_dot_extension_with_extension_start_should_fail() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let file = path_buf.clone().join("file.aA-01.23");
+    assert!(file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-l")
+        .arg("-a")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("aA-01")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No matching file"));
+
+    assert!(file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_multi_dot_extension_with_complete_extension() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let file = path_buf.clone().join("file.aA-01.23");
+    assert!(file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-l")
+        .arg("-a")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("aA-01.23")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Do you really want to delete 2 "));
+
+    assert!(!file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_multi_dot_extension_with_extension_end_should_work() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let file = path_buf.clone().join("file.aA-01.23");
+    assert!(file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-l")
+        .arg("-a")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("23")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Do you really want to delete 2 "));
+
+    assert!(!file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_multi_dot_extension_with_extension_partial_end_should_fail() -> Result<(), Box<dyn Error>> {
+    // Using "g" should not delete file.tar.gz. Either tar.gz or gz should be used instead.
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let file = path_buf.clone().join("file.aA-01.23");
+    assert!(file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-l")
+        .arg("-a")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("3")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No matching file"));
+
+    assert!(file.exists());
 
     Ok(())
 }

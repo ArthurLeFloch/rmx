@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::error::Error;
 
 use std::fs::{self, DirEntry, FileType};
@@ -9,6 +8,7 @@ pub use crate::parsing::arguments;
 pub use crate::parsing::arguments::{CollectOptions, DeleteOptions};
 mod parsing;
 
+// Returns the largest extension (i.e. using file.tar.gz will return tar.gz)
 fn get_fileext(filename: &String) -> Option<&str> {
     let parts = filename.split_once(".")?;
     if parts.0.is_empty() {
@@ -81,8 +81,11 @@ pub fn collect_matching_files(
     path: &PathBuf,
     options: &CollectOptions,
 ) -> Result<Vec<PathBuf>, Box<dyn Error>> {
-    let hashset: HashSet<String> = HashSet::from_iter(extensions.clone());
-    let keep = |ext: &str| options.invert != hashset.contains(ext);
+    let dotted: Vec<String> = extensions.iter().map(|s| format!(".{s}")).collect();
+    let keep = |file_ext: &str| {
+        let dotted_fil_ext = format!(".{file_ext}");
+        options.invert != dotted.iter().any(|e| dotted_fil_ext.ends_with(e))
+    };
 
     collect_matching_files_rec(options, &keep, path)
 }
@@ -148,6 +151,8 @@ mod tests {
     // │   └── sub1.txt
     // ├── .hidden.txt
     // ├── data.dat
+    // ├── file.tar.gz
+    // ├── other.md.gz
     // ├── root.log
     // └── root.txt
     //
@@ -159,6 +164,8 @@ mod tests {
         File::create(temp_dir.path().join("root.log")).unwrap();
         File::create(temp_dir.path().join("data.dat")).unwrap();
         File::create(temp_dir.path().join(".hidden.txt")).unwrap();
+        File::create(temp_dir.path().join("file.tar.gz")).unwrap();
+        File::create(temp_dir.path().join("other.md.gz")).unwrap();
 
         // Create subfolder1
         let subfolder1 = temp_dir.path().join("subfolder1");
@@ -230,6 +237,26 @@ mod tests {
     }
 
     #[test]
+    fn collect_with_extension_suffix_should_fail() -> Result<(), Box<dyn Error>> {
+        let temp_dir = create_temp_folder();
+        let path_buf = temp_dir.path().to_path_buf();
+
+        let extensions = vec!["g".to_string()]; // For root.log
+        let options = CollectOptions {
+            all: false,
+            list: false,
+            recurse: false,
+            invert: false,
+        };
+
+        let files = collect_matching_files(&extensions, &path_buf, &options)?;
+
+        assert_eq!(files.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
     fn collect_one_extension() -> Result<(), Box<dyn Error>> {
         let temp_dir = create_temp_folder();
         let path_buf = temp_dir.path().to_path_buf();
@@ -265,9 +292,11 @@ mod tests {
 
         let files = collect_matching_files(&extensions, &path_buf, &options)?;
 
-        assert_eq!(files.len(), 2);
+        assert_eq!(files.len(), 4);
         assert!(files.contains(&path_buf.join("root.log")));
         assert!(files.contains(&path_buf.join("data.dat")));
+        assert!(files.contains(&path_buf.join("file.tar.gz")));
+        assert!(files.contains(&path_buf.join("other.md.gz")));
 
         Ok(())
     }
@@ -309,10 +338,12 @@ mod tests {
 
         let files = collect_matching_files(&extensions, &path_buf, &options)?;
 
-        assert_eq!(files.len(), 3);
+        assert_eq!(files.len(), 5);
         assert!(files.contains(&path_buf.join("root.txt")));
         assert!(files.contains(&path_buf.join("root.log")));
         assert!(files.contains(&path_buf.join(".hidden.txt")));
+        assert!(files.contains(&path_buf.join("file.tar.gz")));
+        assert!(files.contains(&path_buf.join("other.md.gz")));
 
         Ok(())
     }
@@ -332,8 +363,10 @@ mod tests {
 
         let files = collect_matching_files(&extensions, &path_buf, &options)?;
 
-        assert_eq!(files.len(), 1);
+        assert_eq!(files.len(), 3);
         assert!(files.contains(&path_buf.join("root.log")));
+        assert!(files.contains(&path_buf.join("file.tar.gz")));
+        assert!(files.contains(&path_buf.join("other.md.gz")));
 
         Ok(())
     }
@@ -383,7 +416,7 @@ mod tests {
         // Verify that the symlink works by checking that we can see files through it
         let to_temp_dir = fs::read_link(&link).unwrap();
         let file_count = fs::read_dir(&to_temp_dir)?.count();
-        assert_eq!(file_count, 6);
+        assert_eq!(file_count, 8);
 
         let extensions = vec!["txt".to_string()];
         let options = CollectOptions {
@@ -396,6 +429,69 @@ mod tests {
         let files = collect_matching_files(&extensions, &path_buf, &options)?;
 
         assert_eq!(files.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn collect_multi_dot_extension_with_extension_start() -> Result<(), Box<dyn Error>> {
+        let temp_dir = create_temp_folder();
+        let path_buf = temp_dir.path().to_path_buf();
+
+        let extensions = vec!["tar".to_string()];
+        let options = CollectOptions {
+            all: true,
+            list: false,
+            recurse: false,
+            invert: false,
+        };
+
+        let files = collect_matching_files(&extensions, &path_buf, &options)?;
+
+        assert_eq!(files.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn collect_multi_dot_extension_with_complete_extension() -> Result<(), Box<dyn Error>> {
+        let temp_dir = create_temp_folder();
+        let path_buf = temp_dir.path().to_path_buf();
+
+        let extensions = vec!["tar.gz".to_string()];
+        let options = CollectOptions {
+            all: true,
+            list: false,
+            recurse: false,
+            invert: false,
+        };
+
+        let files = collect_matching_files(&extensions, &path_buf, &options)?;
+
+        assert_eq!(files.len(), 1);
+        assert!(files.contains(&path_buf.join("file.tar.gz")));
+
+        Ok(())
+    }
+
+    #[test]
+    fn collect_multi_dot_extension_with_last_part() -> Result<(), Box<dyn Error>> {
+        let temp_dir = create_temp_folder();
+        let path_buf = temp_dir.path().to_path_buf();
+
+        let extensions = vec!["gz".to_string()];
+        let options = CollectOptions {
+            all: true,
+            list: false,
+            recurse: false,
+            invert: false,
+        };
+
+        let files = collect_matching_files(&extensions, &path_buf, &options)?;
+
+        assert_eq!(files.len(), 2);
+        assert!(files.contains(&path_buf.join("file.tar.gz")));
+        assert!(files.contains(&path_buf.join("other.md.gz")));
 
         Ok(())
     }
