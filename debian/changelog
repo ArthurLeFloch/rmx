@@ -1,3 +1,9 @@
+rmx (0.1.2) unstable; urgency=low
+
+  * Support for more extensions, such as R, sha256, tar.gz, AnY-._thing1, ...
+
+ -- Arthur Le Floch <alf.github@gmail.com>  Sun, 06 Apr 2025 16:35:46 +0100
+
 rmx (0.1.1) unstable; urgency=low
 
   * Empty presets are now not considered as valid presets.
