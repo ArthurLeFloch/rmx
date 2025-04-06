@@ -9,11 +9,13 @@ pub use crate::parsing::arguments;
 pub use crate::parsing::arguments::{CollectOptions, DeleteOptions};
 mod parsing;
 
-fn get_fileext(entry: &DirEntry) -> Option<String> {
-    entry
-        .path()
-        .extension()
-        .and_then(|s| s.to_str().map(|s| s.to_string()))
+fn get_fileext(filename: &String) -> Option<&str> {
+    let parts = filename.split_once(".")?;
+    if parts.0.is_empty() {
+        // In case file is hidden, like ".file.lock", split again to get ".lock"
+        return Some(parts.1.split_once(".")?.1);
+    }
+    Some(parts.1)
 }
 
 fn get_filetype(entry: &DirEntry) -> Result<FileType, Box<dyn Error>> {
@@ -31,7 +33,7 @@ fn get_filename(entry: &DirEntry) -> Result<String, Box<dyn Error>> {
 
 fn collect_matching_files_rec(
     options: &CollectOptions,
-    keep: &dyn Fn(&String) -> bool,
+    keep: &dyn Fn(&str) -> bool,
     path: &PathBuf,
 ) -> Result<Vec<PathBuf>, Box<dyn Error>> {
     // Storing PathBuf instead of DirEntry avoids keeping the directories' file descriptors opened
@@ -55,7 +57,7 @@ fn collect_matching_files_rec(
             continue;
         }
 
-        if !filetype.is_file() || !get_fileext(&entry).is_some_and(|f| keep(&f)) {
+        if !filetype.is_file() || !get_fileext(&filename).is_some_and(|f| keep(&f)) {
             continue;
         };
 
@@ -80,7 +82,7 @@ pub fn collect_matching_files(
     options: &CollectOptions,
 ) -> Result<Vec<PathBuf>, Box<dyn Error>> {
     let hashset: HashSet<String> = HashSet::from_iter(extensions.clone());
-    let keep = |ext: &String| options.invert != hashset.contains(ext);
+    let keep = |ext: &str| options.invert != hashset.contains(ext);
 
     collect_matching_files_rec(options, &keep, path)
 }
@@ -129,6 +131,7 @@ mod tests {
     use super::*;
 
     use std::fs::File;
+    use std::os::unix::fs::symlink;
     use tempfile::{TempDir, tempdir};
 
     // Creates a directory as follow:
@@ -182,6 +185,28 @@ mod tests {
         File::create(hidden_folder.join("hidden.txt")).unwrap();
 
         temp_dir
+    }
+
+    #[test]
+    fn get_fileext_normal() -> Result<(), Box<dyn Error>> {
+        let filename = "file.txt".to_string();
+
+        let extension = get_fileext(&filename).unwrap();
+
+        assert_eq!("txt", extension);
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_fileext_hidden_file() -> Result<(), Box<dyn Error>> {
+        let filename = ".file.tar.gz".to_string();
+
+        let extension = get_fileext(&filename).unwrap();
+
+        assert_eq!("tar.gz", extension);
+
+        Ok(())
     }
 
     #[test]
@@ -339,6 +364,38 @@ mod tests {
                     .join("sub2.txt")
             )
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn collect_should_not_traverse_symlinks() -> Result<(), Box<dyn Error>> {
+        let temp_dir = create_temp_folder();
+
+        let other_temp_dir = tempdir().unwrap();
+        let path_buf = other_temp_dir.path().to_path_buf();
+
+        let link = path_buf.join("link");
+
+        // Creating a symbolic link to the real directory
+        symlink(&temp_dir, &link)?;
+
+        // Verify that the symlink works by checking that we can see files through it
+        let to_temp_dir = fs::read_link(&link).unwrap();
+        let file_count = fs::read_dir(&to_temp_dir)?.count();
+        assert_eq!(file_count, 6);
+
+        let extensions = vec!["txt".to_string()];
+        let options = CollectOptions {
+            all: true,
+            list: false,
+            recurse: true,
+            invert: false,
+        };
+
+        let files = collect_matching_files(&extensions, &path_buf, &options)?;
+
+        assert_eq!(files.len(), 0);
 
         Ok(())
     }

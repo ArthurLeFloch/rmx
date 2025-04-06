@@ -19,6 +19,8 @@ use tempfile::{self, NamedTempFile, TempDir};
 // │   └── sub1.txt
 // ├── .hidden.txt
 // ├── data.dat
+// ├── file.aA-01.2
+// ├── .hidden.aA-01.2
 // ├── root.log
 // └── root.txt
 //
@@ -30,6 +32,8 @@ fn create_temp_folder() -> TempDir {
     File::create(temp_dir.path().join("root.txt")).unwrap();
     File::create(temp_dir.path().join("root.log")).unwrap();
     File::create(temp_dir.path().join("data.dat")).unwrap();
+    File::create(temp_dir.path().join("file.aA-01.2")).unwrap();
+    File::create(temp_dir.path().join(".hidden.aA-01.2")).unwrap();
     File::create(temp_dir.path().join(".hidden.txt")).unwrap();
 
     // Create subfolder1
@@ -291,7 +295,7 @@ fn it_recursive_reverse_with_hidden_files() -> Result<(), Box<dyn Error>> {
         .arg("txt")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Do you really want to delete 5 "));
+        .stdout(predicate::str::contains("Do you really want to delete 7 "));
 
     assert!(files.iter().all(|f| !f.exists()));
     assert!(first_control_file.exists());
@@ -365,6 +369,51 @@ fn it_no_matching_file_should_success() -> Result<(), Box<dyn Error>> {
         .stdout(predicate::str::contains("No matching file"));
 
     assert!(control_file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_complex_extension_should_success() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let file = path_buf.clone().join("file.aA-01.2");
+    assert!(file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-l")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("aA-01.2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Do you really want to delete 1 "));
+
+    assert!(!file.exists());
+
+    Ok(())
+}
+
+#[test]
+fn it_hidden_complex_extension_should_success() -> Result<(), Box<dyn Error>> {
+    let temp_dir = create_temp_folder();
+    let path_buf = temp_dir.path().to_path_buf();
+
+    let file = path_buf.clone().join(".hidden.aA-01.2");
+    assert!(file.exists());
+
+    Command::cargo_bin("rmx")?
+        .arg("-l")
+        .arg("-a")
+        .arg("-p")
+        .arg(path_buf.to_str().unwrap())
+        .arg("aA-01.2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Do you really want to delete 2 "));
+
+    assert!(!file.exists());
 
     Ok(())
 }

@@ -4,6 +4,8 @@ use clap::error::ErrorKind as ClapErrorKind;
 use std::error::Error;
 use std::path::PathBuf;
 
+use regex::Regex;
+
 use crate::parsing::preset;
 
 // (Linux only)
@@ -19,7 +21,7 @@ fn default_config_path() -> PathBuf {
     long_about = "Rust CLI to delete files based on their extension"
 )]
 pub struct Args {
-    /// List of file extensions, like `o a so`, without dots
+    /// File extension list, like `md5 tar.gz R`, without extension's dot
     #[arg(num_args(1..), required_unless_present="preset", required_unless_present="presets", conflicts_with="preset", conflicts_with="presets")]
     extensions: Vec<String>,
 
@@ -35,7 +37,7 @@ pub struct Args {
     #[arg(short, long, default_value_t = false)]
     force: bool,
 
-    /// Print matching files (slower), does not block deletion, overriden by -n/--dry-run
+    /// Print matches (slower), do not block deletion, overriden by -n/--dry-run
     #[arg(short, long, default_value_t = false)]
     list: bool,
 
@@ -47,19 +49,19 @@ pub struct Args {
     #[arg(short, long, default_value_t = false)]
     recurse: bool,
 
-    /// Invert selection: keep given extensions, and delete other files
+    /// Invert selection: keep given extensions, delete other files
     #[arg(short, long, default_value_t = false)]
     invert: bool,
 
-    /// (Linux only) Load a preset of extension, saved in the config file (see --config), cannot be used with other extensions
+    /// (Linux) Load a preset of extension, saved in the config file (see --config), cannot be used with other extensions
     #[arg(long)]
     preset: Option<String>,
 
-    /// (Linux only) Show available presets, cannot be used with other extensions
+    /// (Linux) Show available presets, cannot be used with other extensions
     #[arg(long)]
     presets: bool,
 
-    /// (Linux only) File location for presets (see --preset/--presets)
+    /// (Linux) File location for presets (see --preset/--presets)
     #[arg(long, default_value_os_t = default_config_path())]
     config: PathBuf,
 }
@@ -153,10 +155,9 @@ impl Args {
     }
 }
 
-fn are_extensions_valid(extensions: &Vec<String>) -> bool {
-    extensions
-        .iter()
-        .all(|ext| ext.bytes().all(|b| (b'a'..=b'z').contains(&b)))
+fn are_extensions_valid(extensions: &[String]) -> bool {
+    let re = Regex::new(r"^[0-9A-Za-z_-]+(?:.[0-9A-Za-z_-]+)*$").unwrap();
+    extensions.iter().all(|ext| re.is_match(ext))
 }
 
 #[cfg(test)]
@@ -190,10 +191,33 @@ mod test {
     }
 
     #[test]
-    fn check_invalid_extension() {
+    fn check_dot_at_start_extension() {
         let mut extensions: Vec<String> = Vec::new();
-        extensions.push(".".to_string());
-        extensions.push("b".to_string());
+        extensions.push(".txt".to_string());
+
+        assert!(!are_extensions_valid(&extensions));
+    }
+
+    #[test]
+    fn check_valid_dotted_extension() {
+        let mut extensions: Vec<String> = Vec::new();
+        extensions.push("tar.gz".to_string());
+
+        assert!(are_extensions_valid(&extensions));
+    }
+
+    #[test]
+    fn check_valid_complex_extension() {
+        let mut extensions: Vec<String> = Vec::new();
+        extensions.push("aBc.De0-_f1.2".to_string());
+
+        assert!(are_extensions_valid(&extensions));
+    }
+
+    #[test]
+    fn check_invalid_complex_extension() {
+        let mut extensions: Vec<String> = Vec::new();
+        extensions.push(".aBc.De0-_f1.2".to_string());
 
         assert!(!are_extensions_valid(&extensions));
     }

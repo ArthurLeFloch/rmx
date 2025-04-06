@@ -23,6 +23,7 @@ assets = [
 ]
 
 [dependencies]
+regex = "1.11.1"
 clap = { version = "4.5.35", features = ["derive"] }
 clap_mangen = { version = "0.2.26", optional = true }
 

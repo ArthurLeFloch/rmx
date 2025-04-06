@@ -353,6 +353,7 @@ dependencies = [
  "clap",
  "clap_mangen",
  "predicates",
+ "regex",
  "tempfile",
 ]
 
