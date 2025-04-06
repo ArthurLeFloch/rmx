@@ -1,3 +1,10 @@
+rmx (0.1.3) unstable; urgency=low
+
+  * Fix: file no longer collected when the provided extension is just a suffix.
+  * Multi-dot extensions can now be removed with any suffix (separated by a dot).
+
+ -- Arthur Le Floch <alf.github@gmail.com>  Sun, 06 Apr 2025 18:04:56 +0100
+
 rmx (0.1.2) unstable; urgency=low
 
   * Support for more extensions, such as R, sha256, tar.gz, AnY-._thing1, ...
